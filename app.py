@@ -1,5 +1,5 @@
 import os
-from flask import flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from datetime import datetime
 import json
 
