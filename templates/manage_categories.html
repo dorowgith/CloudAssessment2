@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Categorias - Cloud Assessment Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .category-card {
+        transition: transform 0.2s;
+        margin-bottom: 1.5rem;
+    }
+    .category-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1050;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Gerenciar Categorias</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newCategoryModal">
+        <i class="bi bi-plus-lg"></i> Nova Categoria
+    </button>
+</div>
+
+<div class="row" id="categoriesContainer">
+    {% for category in categories %}
+    <div class="col-md-6 mb-4" data-category-id="{{ category.id }}">
+        <div class="card category-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title mb-0">{{ category.name }}</h5>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-primary" 
+                                onclick="editCategory('{{ category.id }}')"
+                                title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" 
+                                onclick="deleteCategory('{{ category.id }}')"
+                                title="Excluir">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="card-text text-muted">
+                    <small>ID: {{ category.id }}</small>
+                </p>
+                <p class="card-text">
+                    {{ category.description if category.description else "Sem descrição" }}
+                </p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <p class="card-text mb-0">
+                        <small class="text-muted">
+                            <i class="bi bi-question-circle"></i> {{ category.questions|length }} questões
+                        </small>
+                    </p>
+                    <div class="baseline-badge">
+                        <span class="badge bg-primary">
+                            Baseline: {{ category.baseline|default(70) }}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Nova Categoria -->
+<div class="modal fade" id="newCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Categoria</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('add_category') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="categoryId" class="form-label">ID da Categoria</label>
+                        <input type="text" class="form-control" id="categoryId" name="id" required>
+                        <small class="form-text text-muted">
+                            Use apenas letras minúsculas, números e underscores
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">Nome da Categoria</label>
+                        <input type="text" class="form-control" id="categoryName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryDescription" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="categoryDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryBaseline" class="form-label">Baseline (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="categoryBaseline" name="baseline" 
+                                   min="0" max="100" value="70" required>
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <small class="form-text text-muted">
+                            Defina a pontuação alvo para esta categoria (0-100)
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Criar Categoria</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Categoria -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Categoria</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('edit_category') }}" method="POST">
+                <input type="hidden" id="editOriginalId" name="original_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editCategoryId" class="form-label">ID da Categoria</label>
+                        <input type="text" class="form-control" id="editCategoryId" name="id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCategoryName" class="form-label">Nome da Categoria</label>
+                        <input type="text" class="form-control" id="editCategoryName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCategoryDescription" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="editCategoryDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCategoryBaseline" class="form-label">Baseline (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="editCategoryBaseline" name="baseline" 
+                                   min="0" max="100" required>
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <small class="form-text text-muted">
+                            Defina a pontuação alvo para esta categoria (0-100)
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function editCategory(categoryId) {
+    try {
+        const response = await fetch(`/api/categories/${categoryId}`);
+        const category = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('editOriginalId').value = category.id;
+            document.getElementById('editCategoryId').value = category.id;
+            document.getElementById('editCategoryName').value = category.name;
+            document.getElementById('editCategoryDescription').value = category.description || '';
+            document.getElementById('editCategoryBaseline').value = category.baseline || 70;
+            
+            new bootstrap.Modal(document.getElementById('editCategoryModal')).show();
+        } else {
+            showToast('Erro', category.error || 'Erro ao carregar dados da categoria', 'danger');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showToast('Erro', 'Erro ao carregar dados da categoria', 'danger');
+    }
+}
+
+function deleteCategory(categoryId) {
+    if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+        fetch(`/api/categories/${categoryId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const categoryElement = document.querySelector(`[data-category-id="${categoryId}"]`);
+                if (categoryElement) {
+                    categoryElement.remove();
+                    showToast('Sucesso', 'Categoria excluída com sucesso!', 'success');
+                }
+            } else {
+                showToast('Erro', data.error || 'Erro ao excluir categoria', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showToast('Erro', 'Erro ao excluir categoria', 'danger');
+        });
+    }
+}
+
+function showToast(title, message, type = 'success') {
+    const toastElement = document.querySelector('.toast');
+    const toast = new bootstrap.Toast(toastElement);
+    
+    toastElement.querySelector('.toast-header strong').textContent = title;
+    toastElement.querySelector('.toast-body').textContent = message;
+    
+    // Remover classes antigas e adicionar nova classe de cor
+    toastElement.className = `toast border-${type}`;
+    
+    toast.show();
+}
+</script>
+{% endblock %} 

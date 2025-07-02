@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Assessment - Cloud Assessment Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .assessment-card {
+        transition: transform 0.2s;
+        margin-bottom: 1.5rem;
+    }
+    .assessment-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .category-badge {
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .category-badge:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1050;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toast para notificações -->
+<div class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+        <strong class="me-auto">Notificação</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body"></div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Assessment</h1>
+    <div class="btn-group">
+        <a href="{{ url_for('manage_categories') }}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-gear"></i> Gerenciar Categorias
+        </a>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTemplateModal">
+            <i class="bi bi-plus-lg"></i> Novo Template
+        </button>
+    </div>
+</div>
+
+<div class="row" id="templatesContainer">
+    {% for template in templates %}
+    <div class="col-md-6" data-template-id="{{ template.id }}">
+        <div class="card assessment-card">
+            <div class="card-body">
+                <h5 class="card-title">{{ template.name }}</h5>
+                {% if template.description %}
+                <p class="card-text text-muted small">{{ template.description }}</p>
+                {% endif %}
+                <div class="mb-3">
+                    {% for category in template.categories %}
+                    <a href="{{ url_for('manage_categories') }}" class="text-decoration-none">
+                        <span class="badge bg-secondary category-badge" title="Clique para editar esta categoria">
+                            {{ category }}
+                            <i class="bi bi-pencil-square ms-1"></i>
+                        </span>
+                    </a>
+                    {% endfor %}
+                </div>
+                <p class="card-text">
+                    <small class="text-muted">
+                        <i class="bi bi-question-circle"></i> {{ template.total_questions }} questões
+                    </small>
+                </p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('start_assessment', template_id=template.id) }}" class="btn btn-primary">
+                        <i class="bi bi-play-fill"></i> Iniciar Assessment
+                    </a>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-danger btn-sm" 
+                                onclick="deleteTemplate('{{ template.id }}')" 
+                                title="Excluir">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal para criar novo template -->
+<div class="modal fade" id="newTemplateModal" tabindex="-1" aria-labelledby="newTemplateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newTemplateModalLabel">Novo Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newTemplateForm">
+                    <div class="mb-3">
+                        <label for="templateName" class="form-label">Nome do Template</label>
+                        <input type="text" class="form-control" id="templateName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="templateDescription" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="templateDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Categorias</label>
+                        <div id="categoriesContainer">
+                            {% for category in categories %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       value="{{ category.id }}" 
+                                       id="category_{{ category.id }}">
+                                <label class="form-check-label" for="category_{{ category.id }}">
+                                    {{ category.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="createTemplate()">Criar Template</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function createTemplate() {
+    const name = document.getElementById('templateName').value;
+    const description = document.getElementById('templateDescription').value;
+    const selectedCategories = Array.from(document.querySelectorAll('#categoriesContainer input[type="checkbox"]:checked'))
+        .map(checkbox => ({
+            id: checkbox.value,
+            name: checkbox.nextElementSibling.textContent.trim()
+        }));
+    
+    if (!name) {
+        alert('Por favor, insira um nome para o template');
+        return;
+    }
+    
+    if (selectedCategories.length === 0) {
+        alert('Por favor, selecione pelo menos uma categoria');
+        return;
+    }
+    
+    fetch('{{ url_for("create_template") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description,
+            selectedCategories: selectedCategories
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const template = data.template;
+            const newTemplateHtml = generateTemplateHtml(template);
+            document.getElementById('templatesContainer').insertAdjacentHTML('beforeend', newTemplateHtml);
+            
+            // Limpar formulário e fechar modal
+            document.getElementById('newTemplateForm').reset();
+            bootstrap.Modal.getInstance(document.getElementById('newTemplateModal')).hide();
+            
+            showToast('Sucesso', 'Template criado com sucesso!');
+        } else {
+            showToast('Erro', data.error || 'Erro ao criar template', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showToast('Erro', 'Erro ao criar template', 'danger');
+    });
+}
+
+function generateTemplateHtml(template) {
+    const categoriesBadges = template.categories
+        .map(category => `
+            <a href="{{ url_for('manage_categories') }}" class="text-decoration-none">
+                <span class="badge bg-secondary category-badge" title="Clique para editar esta categoria">
+                    ${category}
+                    <i class="bi bi-pencil-square ms-1"></i>
+                </span>
+            </a>
+        `).join('');
+
+    return `
+        <div class="col-md-6" data-template-id="${template.id}">
+            <div class="card assessment-card">
+                <div class="card-body">
+                    <h5 class="card-title">${template.name}</h5>
+                    ${template.description ? `<p class="card-text text-muted small">${template.description}</p>` : ''}
+                    <div class="mb-3">
+                        ${categoriesBadges}
+                    </div>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            <i class="bi bi-question-circle"></i> ${template.total_questions} questões
+                        </small>
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('start_assessment', template_id='TEMPLATE_ID') }}".replace('TEMPLATE_ID', template.id) class="btn btn-primary">
+                            <i class="bi bi-play-fill"></i> Iniciar Assessment
+                        </a>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-danger btn-sm" 
+                                    onclick="deleteTemplate('${template.id}')" 
+                                    title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function deleteTemplate(templateId) {
+    if (confirm('Tem certeza que deseja excluir este template?')) {
+        fetch(`{{ url_for('delete_template', template_id='') }}${templateId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const templateElement = document.querySelector(`[data-template-id="${templateId}"]`);
+                if (templateElement) {
+                    templateElement.remove();
+                }
+                showToast('Sucesso', 'Template excluído com sucesso!');
+            } else {
+                showToast('Erro', data.error || 'Erro ao excluir template', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showToast('Erro', 'Erro ao excluir template', 'danger');
+        });
+    }
+}
+
+function showToast(title, message, type = 'success') {
+    const toast = document.querySelector('.toast');
+    const toastHeader = toast.querySelector('.toast-header strong');
+    const toastBody = toast.querySelector('.toast-body');
+    
+    toast.className = `toast bg-${type} text-white`;
+    toastHeader.textContent = title;
+    toastBody.textContent = message;
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Assessments Realizados - Cloud Assessment Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .assessment-row {
+        transition: background-color 0.2s;
+    }
+    .assessment-row:hover {
+        background-color: #f8f9fa;
+    }
+    .score-badge {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    .filters {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Assessments Realizados</h1>
+
+<div class="filters">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label class="form-label">Período</label>
+                <select class="form-select" id="periodFilter">
+                    <option value="all">Todos</option>
+                    <option value="last_week">Última Semana</option>
+                    <option value="last_month">Último Mês</option>
+                    <option value="last_year">Último Ano</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label class="form-label">Categoria</label>
+                <select class="form-select" id="categoryFilter">
+                    <option value="all">Todas</option>
+                    <option value="arquitetura">Arquitetura</option>
+                    <option value="resiliencia">Resiliência</option>
+                    <option value="seguranca">Cyber Segurança</option>
+                    <option value="governanca">Governança</option>
+                    <option value="finops">FinOps</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="statusFilter">
+                    <option value="all">Todos</option>
+                    <option value="completed">Concluído</option>
+                    <option value="in_progress">Em Andamento</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label class="form-label">Ordenar por</label>
+                <select class="form-select" id="sortFilter">
+                    <option value="date_desc">Data (mais recente)</option>
+                    <option value="date_asc">Data (mais antiga)</option>
+                    <option value="score_desc">Pontuação (maior)</option>
+                    <option value="score_asc">Pontuação (menor)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if completed_assessments %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Nome do Assessment</th>
+                <th>Categorias</th>
+                <th>Status</th>
+                <th>Pontuação</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for assessment in completed_assessments %}
+            <tr class="assessment-row">
+                <td>{{ assessment.date }}</td>
+                <td>{{ assessment.name }}</td>
+                <td>
+                    {% for category in assessment.categories %}
+                    <span class="badge bg-secondary">{{ category }}</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <span class="badge {% if assessment.status == 'Concluído' %}bg-success{% else %}bg-warning{% endif %}">
+                        {{ assessment.status }}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge bg-primary score-badge">{{ assessment.score }}%</span>
+                </td>
+                <td>
+                    <div class="btn-group">
+                        {% if assessment.status == 'Em Andamento' %}
+                        <a href="{{ url_for('continue_assessment', assessment_id=assessment.id) }}" 
+                           class="btn btn-sm btn-outline-primary"
+                           title="Continuar Assessment">
+                            <i class="bi bi-play-fill"></i>
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('show_results', assessment_id=assessment.id) }}" 
+                           class="btn btn-sm btn-outline-primary"
+                           title="Ver Detalhes">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-sm btn-outline-danger"
+                                onclick="deleteAssessment({{ assessment.id }})"
+                                title="Excluir">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    Nenhum assessment realizado ainda.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteAssessment(assessmentId) {
+    if (confirm('Tem certeza que deseja excluir este assessment?')) {
+        fetch(`/completed-assessments/delete/${assessmentId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Erro ao excluir assessment');
+            }
+        });
+    }
+}
+</script>
+{% endblock %} 

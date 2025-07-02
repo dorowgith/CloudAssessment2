@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Cloud Assessment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-card {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Cloud Assessment Platform</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Início</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Dashboard</h1>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary">Último Mês</button>
+                <button class="btn btn-outline-primary active">Último Trimestre</button>
+                <button class="btn btn-outline-primary">Último Ano</button>
+            </div>
+        </div>
+
+        <!-- Métricas Principais -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="dashboard-card text-center">
+                    <div class="metric-value">{{ total_assessments }}</div>
+                    <div class="metric-label">Total de Assessments</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="dashboard-card text-center">
+                    <div class="metric-value">{{ avg_score|default('N/A') }}</div>
+                    <div class="metric-label">Média de Pontuação</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="dashboard-card text-center">
+                    <div class="metric-value">{{ completion_rate }}%</div>
+                    <div class="metric-label">Taxa de Conclusão</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="dashboard-card text-center">
+                    <div class="metric-value">{{ improvement_rate }}%</div>
+                    <div class="metric-label">Taxa de Melhoria</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="dashboard-card">
+                    <h4>Evolução das Pontuações</h4>
+                    <div class="chart-container">
+                        <canvas id="scoreEvolutionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="dashboard-card">
+                    <h4>Distribuição por Categoria</h4>
+                    <div class="chart-container">
+                        <canvas id="categoryDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="dashboard-card">
+                    <h4>Pontuações por Categoria</h4>
+                    <div class="chart-container">
+                        <canvas id="categoryScoresChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="dashboard-card">
+                    <h4>Tendências de Melhoria</h4>
+                    <div class="chart-container">
+                        <canvas id="improvementTrendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Dados para os gráficos (substituir com dados dinâmicos do backend)
+        const scoreEvolutionData = {
+            labels: {{ dates|tojson }},
+            datasets: [{
+                label: 'Pontuação Média',
+                data: {{ scores|tojson }},
+                borderColor: '#0d6efd',
+                tension: 0.4,
+                fill: false
+            }]
+        };
+
+        const categoryDistributionData = {
+            labels: {{ categories|tojson }},
+            datasets: [{
+                data: {{ category_counts|tojson }},
+                backgroundColor: [
+                    '#0d6efd',
+                    '#6610f2',
+                    '#6f42c1',
+                    '#d63384',
+                    '#dc3545'
+                ]
+            }]
+        };
+
+        const categoryScoresData = {
+            labels: {{ categories|tojson }},
+            datasets: [{
+                label: 'Pontuação Média',
+                data: {{ category_scores|tojson }},
+                backgroundColor: 'rgba(13, 110, 253, 0.5)',
+                borderColor: '#0d6efd',
+                borderWidth: 1
+            }]
+        };
+
+        const improvementTrendsData = {
+            labels: {{ trend_dates|tojson }},
+            datasets: {{ trend_datasets|tojson }}
+        };
+
+        // Configuração e renderização dos gráficos
+        new Chart('scoreEvolutionChart', {
+            type: 'line',
+            data: scoreEvolutionData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        new Chart('categoryDistributionChart', {
+            type: 'doughnut',
+            data: categoryDistributionData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        new Chart('categoryScoresChart', {
+            type: 'bar',
+            data: categoryScoresData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+
+        new Chart('improvementTrendsChart', {
+            type: 'line',
+            data: improvementTrendsData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

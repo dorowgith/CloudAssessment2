@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Perguntas - Cloud Assessment Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .question-card {
+        transition: transform 0.2s;
+        margin-bottom: 1.5rem;
+    }
+    .question-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .category-badge {
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1050;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Gerenciar Perguntas</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newQuestionModal">
+        <i class="bi bi-plus-lg"></i> Nova Pergunta
+    </button>
+</div>
+
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Filtros</h5>
+                <div class="mb-3">
+                    <label class="form-label">Categoria</label>
+                    <select class="form-select" id="categoryFilter">
+                        <option value="all">Todas</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ordenar por</label>
+                    <select class="form-select" id="sortFilter">
+                        <option value="category">Categoria</option>
+                        <option value="weight">Peso</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="row" id="questionsContainer">
+            {% for question in questions %}
+            <div class="col-12 mb-4" data-question-id="{{ question.id }}" data-category="{{ question.category_id }}">
+                <div class="card question-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <span class="badge bg-primary category-badge">{{ question.category_name }}</span>
+                                <small class="text-muted">ID: {{ question.id }}</small>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="editQuestion('{{ question.id }}')"
+                                        title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="deleteQuestion('{{ question.id }}')"
+                                        title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p class="card-text">{{ question.text }}</p>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                <i class="bi bi-star-fill"></i> Peso: {{ question.weight }}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova Pergunta -->
+<div class="modal fade" id="newQuestionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Pergunta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('add_question') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="questionCategory" class="form-label">Categoria</label>
+                        <select class="form-select" id="questionCategory" name="category_id" required>
+                            <option value="">Selecione uma categoria</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="questionText" class="form-label">Texto da Pergunta</label>
+                        <textarea class="form-control" id="questionText" name="text" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="questionWeight" class="form-label">Peso</label>
+                        <input type="number" class="form-control" id="questionWeight" name="weight" 
+                               value="1" min="1" max="5" required>
+                        <small class="form-text text-muted">
+                            Valor entre 1 e 5, onde 5 é o mais importante
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="recommendedActions" class="form-label">Ações Recomendadas</label>
+                        <textarea class="form-control" id="recommendedActions" name="recommended_actions" rows="3" placeholder="Descreva as ações recomendadas para atender este requisito"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="implementationTime" class="form-label">Prazo Médio de Implementação</label>
+                        <select class="form-select" id="implementationTime" name="implementation_time">
+                            <option value="">Selecione um prazo</option>
+                            <option value="1_week">Até 1 semana</option>
+                            <option value="2_weeks">2 semanas</option>
+                            <option value="1_month">1 mês</option>
+                            <option value="3_months">3 meses</option>
+                            <option value="6_months">6 meses</option>
+                            <option value="more_6_months">Mais de 6 meses</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Criar Pergunta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Pergunta -->
+<div class="modal fade" id="editQuestionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Pergunta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('edit_question') }}" method="POST">
+                <input type="hidden" id="editQuestionId" name="question_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editQuestionCategory" class="form-label">Categoria</label>
+                        <select class="form-select" id="editQuestionCategory" name="category_id" required>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editQuestionText" class="form-label">Texto da Pergunta</label>
+                        <textarea class="form-control" id="editQuestionText" name="text" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editQuestionWeight" class="form-label">Peso</label>
+                        <input type="number" class="form-control" id="editQuestionWeight" name="weight" 
+                               min="1" max="5" required>
+                        <small class="form-text text-muted">
+                            Valor entre 1 e 5, onde 5 é o mais importante
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRecommendedActions" class="form-label">Ações Recomendadas</label>
+                        <textarea class="form-control" id="editRecommendedActions" name="recommended_actions" rows="3" placeholder="Descreva as ações recomendadas para atender este requisito"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editImplementationTime" class="form-label">Prazo Médio de Implementação</label>
+                        <select class="form-select" id="editImplementationTime" name="implementation_time">
+                            <option value="">Selecione um prazo</option>
+                            <option value="1_week">Até 1 semana</option>
+                            <option value="2_weeks">2 semanas</option>
+                            <option value="1_month">1 mês</option>
+                            <option value="3_months">3 meses</option>
+                            <option value="6_months">6 meses</option>
+                            <option value="more_6_months">Mais de 6 meses</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function editQuestion(questionId) {
+    try {
+        const response = await fetch(`/api/questions/${questionId}`);
+        const question = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('editQuestionId').value = question.id;
+            document.getElementById('editQuestionCategory').value = question.category_id;
+            document.getElementById('editQuestionText').value = question.text;
+            document.getElementById('editQuestionWeight').value = question.weight;
+            document.getElementById('editRecommendedActions').value = question.recommended_actions || '';
+            document.getElementById('editImplementationTime').value = question.implementation_time || '';
+            
+            new bootstrap.Modal(document.getElementById('editQuestionModal')).show();
+        } else {
+            showToast('Erro', question.error || 'Erro ao carregar dados da pergunta', 'danger');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showToast('Erro', 'Erro ao carregar dados da pergunta', 'danger');
+    }
+}
+
+function deleteQuestion(questionId) {
+    if (confirm('Tem certeza que deseja excluir esta pergunta?')) {
+        fetch(`/api/questions/${questionId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const questionElement = document.querySelector(`[data-question-id="${questionId}"]`);
+                if (questionElement) {
+                    questionElement.remove();
+                }
+                showToast('Sucesso', 'Pergunta excluída com sucesso!', 'success');
+            } else {
+                showToast('Erro', data.error || 'Erro ao excluir pergunta', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showToast('Erro', 'Erro ao excluir pergunta', 'danger');
+        });
+    }
+}
+
+function showToast(title, message, type = 'success') {
+    const toastElement = document.querySelector('.toast');
+    const toast = new bootstrap.Toast(toastElement);
+    
+    toastElement.querySelector('.toast-header strong').textContent = title;
+    toastElement.querySelector('.toast-body').textContent = message;
+    
+    // Remover classes antigas e adicionar nova classe de cor
+    toastElement.className = `toast border-${type}`;
+    
+    toast.show();
+}
+
+// Implementar filtros
+document.getElementById('categoryFilter').addEventListener('change', function() {
+    const selectedCategory = this.value;
+    const questions = document.querySelectorAll('#questionsContainer > div');
+    
+    questions.forEach(question => {
+        if (selectedCategory === 'all' || question.dataset.category === selectedCategory) {
+            question.style.display = '';
+        } else {
+            question.style.display = 'none';
+        }
+    });
+});
+
+document.getElementById('sortFilter').addEventListener('change', function() {
+    const sortBy = this.value;
+    const container = document.getElementById('questionsContainer');
+    const questions = Array.from(container.children);
+    
+    questions.sort((a, b) => {
+        if (sortBy === 'category') {
+            return a.dataset.category.localeCompare(b.dataset.category);
+        } else if (sortBy === 'weight') {
+            const weightA = parseInt(a.querySelector('small i').nextSibling.textContent.match(/\d+/)[0]);
+            const weightB = parseInt(b.querySelector('small i').nextSibling.textContent.match(/\d+/)[0]);
+            return weightB - weightA;
+        }
+    });
+    
+    questions.forEach(question => container.appendChild(question));
+});
+</script>
+{% endblock %} 

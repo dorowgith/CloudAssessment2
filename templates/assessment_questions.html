@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Assessment - Cloud Assessment Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    .question-card {
+        margin-bottom: 1rem;
+        border-left: 4px solid #0d6efd;
+    }
+    .weight-badge {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+    .response-badge {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+    .response-total {
+        background-color: #198754;
+    }
+    .response-parcial {
+        background-color: #ffc107;
+        color: #000;
+    }
+    .response-nao_atendida {
+        background-color: #dc3545;
+    }
+    .response-nao_se_aplica {
+        background-color: #6c757d;
+    }
+    .category-header {
+        background-color: #e9ecef;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 6px;
+    }
+    .recommended-actions {
+        display: none;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #dee2e6;
+    }
+    .recommended-actions.show {
+        display: block;
+    }
+    .toggle-actions {
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        margin-left: 0.5rem;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        transition: all 0.2s;
+        background-color: transparent;
+    }
+    .toggle-actions:hover {
+        background-color: #e9ecef;
+    }
+    .toggle-actions i {
+        transition: transform 0.2s;
+    }
+    .toggle-actions.active i {
+        transform: rotate(45deg);
+    }
+    .implementation-time {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 0.5rem;
+    }
+    .actions-list {
+        list-style-type: none;
+        padding-left: 0;
+        margin-bottom: 0.5rem;
+    }
+    .actions-list li {
+        margin-bottom: 0.5rem;
+        padding-left: 1.5rem;
+        position: relative;
+    }
+    .actions-list li:before {
+        content: "•";
+        position: absolute;
+        left: 0.5rem;
+        color: #0d6efd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Detalhes do Assessment</h1>
+        <a href="{{ url_for('show_results', assessment_id=assessment.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> Voltar para Resultados
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Informações do Assessment</h5>
+                    <p class="card-text">
+                        <strong>Nome:</strong> {{ assessment.name }}<br>
+                        <strong>Data:</strong> {{ assessment.date }}<br>
+                        <strong>Pontuação Final:</strong> {{ assessment.score }}%
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">Filtrar por Peso</label>
+                    <select class="form-select" id="weightFilter">
+                        <option value="all">Todos os Pesos</option>
+                        {% for weight in weights %}
+                        <option value="{{ weight }}">Peso {{ weight }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">Filtrar por Resposta</label>
+                    <select class="form-select" id="responseFilter">
+                        <option value="all">Todas as Respostas</option>
+                        <option value="total">Atende Totalmente</option>
+                        <option value="parcial">Atende Parcialmente</option>
+                        <option value="nao_atendida">Não Atende</option>
+                        <option value="nao_se_aplica">Não se Aplica</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">Filtrar por Categoria</label>
+                    <select class="form-select" id="categoryFilter">
+                        <option value="all">Todas as Categorias</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="questionsContainer">
+        {% for category in categories %}
+        <div class="category-section mb-4" data-category="{{ category.id }}">
+            <div class="category-header">
+                <h3>{{ category.name }}</h3>
+            </div>
+            
+            {% for question in category.questions %}
+            {% set response = responses[question.id] %}
+            
+            <div class="card question-card" 
+                 data-weight="{{ question.weight }}"
+                 data-response="{{ response }}"
+                 data-category="{{ category.id }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title flex-grow-1">
+                            {{ question.text }}
+                            {% if question.recommended_actions %}
+                            <button class="toggle-actions" onclick="toggleActions(this)" title="Ver ações recomendadas">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                            {% endif %}
+                        </h5>
+                        <span class="badge bg-primary weight-badge ms-2">
+                            Peso {{ question.weight }}
+                        </span>
+                    </div>
+                    <div>
+                        <span class="badge response-badge response-{{ response }}">
+                            {% if response == 'total' %}
+                                Atende Totalmente
+                            {% elif response == 'parcial' %}
+                                Atende Parcialmente
+                            {% elif response == 'nao_atendida' %}
+                                Não Atende
+                            {% else %}
+                                Não se Aplica
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if question.recommended_actions %}
+                    <div class="recommended-actions">
+                        <h6 class="mb-3">Ações Recomendadas:</h6>
+                        <ul class="actions-list">
+                            {% for action in question.recommended_actions.split('\n') %}
+                            <li>{{ action }}</li>
+                            {% endfor %}
+                        </ul>
+                        <div class="implementation-time">
+                            <strong>Prazo médio de implementação:</strong>
+                            {% if question.implementation_time == '1_week' %}
+                                Até 1 semana
+                            {% elif question.implementation_time == '2_weeks' %}
+                                2 semanas
+                            {% elif question.implementation_time == '1_month' %}
+                                1 mês
+                            {% elif question.implementation_time == '2_months' %}
+                                2 meses
+                            {% elif question.implementation_time == '3_months' %}
+                                3 meses
+                            {% elif question.implementation_time == '6_months' %}
+                                6 meses
+                            {% elif question.implementation_time == 'more_6_months' %}
+                                Mais de 6 meses
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterQuestions() {
+    const weightFilter = document.getElementById('weightFilter').value;
+    const responseFilter = document.getElementById('responseFilter').value;
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    
+    document.querySelectorAll('.question-card').forEach(card => {
+        const weight = card.dataset.weight;
+        const response = card.dataset.response;
+        const category = card.dataset.category;
+        
+        const weightMatch = weightFilter === 'all' || weight === weightFilter;
+        const responseMatch = responseFilter === 'all' || response === responseFilter;
+        const categoryMatch = categoryFilter === 'all' || category === categoryFilter;
+        
+        card.style.display = weightMatch && responseMatch && categoryMatch ? 'block' : 'none';
+    });
+    
+    document.querySelectorAll('.category-section').forEach(section => {
+        const categoryId = section.dataset.category;
+        const hasVisibleQuestions = section.querySelector('.question-card[style="display: block"]');
+        section.style.display = hasVisibleQuestions ? 'block' : 'none';
+    });
+}
+
+function toggleActions(button) {
+    const card = button.closest('.card-body');
+    const actionsDiv = card.querySelector('.recommended-actions');
+    button.classList.toggle('active');
+    actionsDiv.classList.toggle('show');
+}
+
+document.getElementById('weightFilter').addEventListener('change', filterQuestions);
+document.getElementById('responseFilter').addEventListener('change', filterQuestions);
+document.getElementById('categoryFilter').addEventListener('change', filterQuestions);
+</script>
+{% endblock %} 
