@@ -1,5 +1,12 @@
 #!/bin/bash
 
+
+# Instalar as dependências do Python
+echo "Instalando dependências do Python..."
+pip install --upgrade pip
+pip install -r requirements.txt
+
+
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "Criando ambiente virtual..."
